@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Native English Speaker</title>
+<style>
+:root{
+  --bg:#0a0a1e;--card:#1a1a3e;--accent:#6c5ce7;--accent-light:#a29bfe;
+  --text:#e0e0ff;--muted:#8888aa;--success:#00b894;--error:#ff7675;
+  --radius:14px;--shadow:0 4px 24px #0006;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  background:linear-gradient(135deg,#0a0a1e,#1a1a2e);
+  color:var(--text);min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;padding:20px;
+}
+.container{width:100%;max-width:640px;margin:auto}
+header{text-align:center;margin:20px 0 30px}
+h1{font-size:2em;font-weight:800;margin-bottom:6px;
+  background:linear-gradient(90deg,var(--accent-light),#fd79a8);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle{color:var(--muted);font-size:.95em;margin-bottom:24px}
+
+/* ---- Buttons ---- */
+.btn{border:none;border-radius:var(--radius);cursor:pointer;font-weight:700;transition:.25s}
+.btn-record{
+  width:72px;height:72px;border-radius:50%;
+  background:linear-gradient(135deg,#e74c3c,#c0392b);
+  box-shadow:0 4px 24px #e74c3c66;
+}
+.btn-record.recording{animation:pulse 1s infinite alternate}
+@keyframes pulse{from{box-shadow:0 0 0 0 #e74c3c66}to{box-shadow:0 0 0 16px #e74c3c00}}
+
+/* ---- Cards ---- */
+.card{
+  background:var(--card);border-radius:var(--radius);
+  padding:24px;margin-bottom:20px;box-shadow:var(--shadow);
+  border:1px solid #2a2a4e;
+}
+.card-title{font-size:1em;font-weight:700;margin-bottom:10px;color:var(--accent-light)}
+
+/* ---- Transcription ---- */
+.transcript-box{
+  background:#12122a;border-radius:10px;padding:14px;
+  font-size:.95em;line-height:1.5;margin-bottom:6px;
+  color:#ccc;min-height:40px;
+}
+
+/* ---- Alternatives ---- */
+.alt-card{
+  background:#12122a;border-radius:12px;padding:16px;
+  margin-bottom:14px;border-left:3px solid var(--accent);
+}
+.alt-label{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.alt-type{font-size:.65em;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
+.label-detailed{background:#1a5c3a;color:#6ee7a0}
+.label-short{background:#5c3a1a;color:#e7a06e}
+.alt-number{font-size:.8em;font-weight:700;color:var(--accent-light);text-transform:uppercase;letter-spacing:.5px}
+.alt-text{font-size:1em;line-height:1.5;color:var(--text);margin-bottom:10px}
+.alt-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-play{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--accent);color:#fff;border:none;border-radius:8px;
+  padding:8px 16px;cursor:pointer;font-weight:600;font-size:.85em;
+}
+.btn-play:hover{filter:brightness(1.2)}
+.btn-copy{
+  background:#2a2a4e;color:var(--muted);border:none;border-radius:8px;
+  padding:8px 14px;cursor:pointer;font-weight:600;font-size:.85em;
+}
+.btn-copy:hover{color:var(--text)}
+
+/* ---- Status / spinner ---- */
+.status{text-align:center;color:var(--muted);margin:12px 0;min-height:28px}
+.spinner{
+  display:inline-block;width:22px;height:22px;
+  border:3px solid var(--accent-light);border-top-color:transparent;
+  border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---- Speaker Animation ---- */
+.speaking-indicator{
+  display:flex;align-items:center;gap:8px;
+  background:var(--card);border-radius:12px;padding:14px 18px;
+  margin-bottom:16px;border:1px solid var(--accent);
+}
+.speaking-icon{font-size:1.4em}
+.speak-bar-container{display:flex;align-items:flex-end;gap:3px;height:24px}
+.speak-bar{
+  width:4px;background:var(--accent-light);border-radius:2px;
+  animation:speakBar .5s ease-in-out infinite alternate;
+}
+.speak-bar:nth-child(1){height:8px;animation-delay:0s}
+.speak-bar:nth-child(2){height:14px;animation-delay:.1s}
+.speak-bar:nth-child(3){height:20px;animation-delay:.2s}
+.speak-bar:nth-child(4){height:14px;animation-delay:.3s}
+.speak-bar:nth-child(5){height:8px;animation-delay:.15s}
+@keyframes speakBar{0%{transform:scaleY(1)}100%{transform:scaleY(.3)}}
+.speak-label{font-size:.85em;color:var(--accent-light);font-weight:600}
+
+/* ---- Footer ---- */
+footer{margin-top:auto;padding:20px 0;text-align:center;color:var(--muted);font-size:.8em}
+
+/* ---- Utility ---- */
+.hidden{display:none!important}
+.mt-1{margin-top:10px}
+.center{text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Native English Speaker</h1>
+    <p class="subtitle">Speak your idea &rarr; get 3 natural-sounding alternatives you can copy or hear aloud</p>
+  </header>
+
+  <!-- Record button -->
+  <div class="center" style="margin-bottom:24px">
+    <button id="recordBtn" class="btn btn-record" title="Tap to start/stop recording"></button>
+    <p id="recordLabel" class="mt-1" style="color:var(--muted);font-size:.9em">Tap to record</p>
+  </div>
+
+  <!-- Status -->
+  <div id="status" class="status hidden"></div>
+
+  <!-- Transcript -->
+  <div id="transcriptCard" class="card hidden">
+    <div class="card-title">🎤 What you said</div>
+    <div id="transcriptText" class="transcript-box"></div>
+  </div>
+
+  <!-- Speaking indicator -->
+  <div id="speakingIndicator" class="speaking-indicator hidden">
+    <span class="speaking-icon">🔊</span>
+    <div class="speak-bar-container">
+      <div class="speak-bar"></div><div class="speak-bar"></div>
+      <div class="speak-bar"></div><div class="speak-bar"></div>
+      <div class="speak-bar"></div>
+    </div>
+    <span class="speak-label">Playing...</span>
+  </div>
+
+  <!-- Alternatives container -->
+  <div id="altsContainer" class="hidden"></div>
+
+  <footer>
+    Powered by Gemini &amp; EURI &nbsp;&middot;&nbsp; Works best in Chrome
+  </footer>
+</div>
+
+<script>
+/* ---- State ---- */
+let mediaRecorder, audioChunks = [];
+let isRecording = false;
+let fullTranscript = '';
+let currentRecognition = null;
+let useWebSpeech = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+/* ---- DOM ---- */
+const recordBtn      = document.getElementById('recordBtn');
+const recordLabel    = document.getElementById('recordLabel');
+const statusEl       = document.getElementById('status');
+const speakingInd    = document.getElementById('speakingIndicator');
+const transcriptCard = document.getElementById('transcriptCard');
+const transcriptText = document.getElementById('transcriptText');
+const altsContainer  = document.getElementById('altsContainer');
+
+/* ---- Recording ---- */
+recordBtn.addEventListener('click', toggleRecording);
+
+async function toggleRecording() {
+  if (isRecording) { stopRecording(); return; }
+
+  if (useWebSpeech) {
+    // Web Speech API path
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new Recognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    fullTranscript = '';
+    let interim = '';
+
+    recognition.onresult = (event) => {
+      interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          fullTranscript += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      recordLabel.textContent = 'Recording… (' + (fullTranscript + interim).length + ' chars)';
+    };
+
+    recognition.onend = () => {
+      if (interim) {
+        fullTranscript += interim;
+      }
+      interim = '';
+      if (isRecording) {
+        try { recognition.start(); } catch (e) { /* ignore */ }
+      } else if (currentRecognition === null) {
+        // stop() was called from stopRecording() — proceed
+        currentRecognition = null;
+        recordBtn.classList.remove('recording');
+        recordLabel.textContent = 'Tap to record';
+        if (!fullTranscript.trim()) {
+          showError('No speech detected. Try again.');
+          return;
+        }
+        sendTranscript(fullTranscript);
+      }
+    };
+
+    try {
+      recognition.start();
+      isRecording = true;
+      currentRecognition = recognition;
+      recordBtn.classList.add('recording');
+      recordLabel.textContent = 'Recording… tap to stop';
+      showStatus('🎙️ Listening — speak now');
+    } catch (err) {
+      showError('Failed to start speech recognition: ' + err.message);
+    }
+    return;
+  }
+
+  // Fallback: traditional MediaRecorder path
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = processRecording;
+    mediaRecorder.start();
+    isRecording = true;
+    recordBtn.classList.add('recording');
+    recordLabel.textContent = 'Recording… tap to stop';
+    showStatus('🎙️ Recording — speak now');
+  } catch (err) {
+    showError('Microphone access denied. Allow it and try again.');
+  }
+}
+
+function stopRecording() {
+  if (useWebSpeech && currentRecognition) {
+    isRecording = false;
+    const rec = currentRecognition;
+    currentRecognition = null;
+    rec.stop();
+    recordLabel.textContent = 'Stopping…';
+    return;
+  }
+  // Fallback path
+  mediaRecorder.stop();
+  isRecording = false;
+  recordBtn.classList.remove('recording');
+  recordLabel.textContent = 'Tap to record';
+  mediaRecorder.stream.getTracks().forEach(t => t.stop());
+}
+
+/* ---- Send transcript (Web Speech path) ---- */
+function sendTranscript(text) {
+  showStatus('<span class="spinner"></span> Processing…');
+  hide('transcriptCard');
+  hide('altsContainer');
+
+  fetch('/rewrite?method=browser-stt', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text })
+  })
+    .then(r => r.json())
+    .then(renderResult)
+    .catch(err => showError('Server error: ' + err.message));
+}
+
+/* ---- Process (fallback audio upload path) ---- */
+function processRecording() {
+  const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+  showStatus('<span class="spinner"></span> Processing…');
+  hide('transcriptCard');
+  hide('altsContainer');
+
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'recording.webm');
+
+  fetch('/process', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(renderResult)
+    .catch(err => showError('Server error: ' + err.message));
+}
+
+/* ---- Render ---- */
+function renderResult(data) {
+  hideStatus();
+
+  if (data.error) { showError(data.error); return; }
+
+  // Show transcript
+  transcriptText.textContent = data.transcript;
+  transcriptCard.classList.remove('hidden');
+
+  // Sort: Detailed first, then Short
+  const sorted = [...data.results].sort((a, b) => {
+    const order = { 'Detailed': 0, 'Short': 1 };
+    return (order[a.label] ?? 2) - (order[b.label] ?? 2);
+  });
+
+  // Build alternatives
+  altsContainer.innerHTML = '';
+  sorted.forEach((alt, idx) => {
+    const card = document.createElement('div');
+    card.className = 'alt-card';
+    const labelClass = alt.label === 'Short' ? 'label-short' : 'label-detailed';
+    card.innerHTML = `
+      <div class="alt-label">
+        <span class="alt-type ${labelClass}">${alt.label || 'Version'}</span>
+        Alternative ${alt.number}
+      </div>
+      <div class="alt-text">${escapeHtml(alt.text)}</div>
+      <div class="alt-actions">
+        <button class="btn-play" data-idx="${idx}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          Listen
+        </button>
+        <button class="btn-copy" data-idx="${idx}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+    `;
+    altsContainer.appendChild(card);
+
+    // Play — lazy TTS fetch on demand
+    card.querySelector('.btn-play').addEventListener('click', () => {
+      const btn = card.querySelector('.btn-play');
+      btn.disabled = true;
+      btn.innerHTML = 'Loading...';
+      fetch('/tts', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text: alt.text})
+      })
+        .then(r => { if (!r.ok) throw new Error('TTS failed'); return r.json(); })
+        .then(data => {
+          if (data.audio) {
+            playAudio('data:audio/mpeg;base64,' + data.audio);
+          } else {
+            alert('Audio unavailable');
+          }
+        })
+        .catch(err => {
+          alert('Audio unavailable: ' + err.message);
+        })
+        .finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> Listen';
+        });
+    });
+
+    // Copy
+    card.querySelector('.btn-copy').addEventListener('click', function() {
+      navigator.clipboard.writeText(alt.text).then(() => {
+        this.textContent = '✓ Copied';
+        setTimeout(() => { this.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy'; }, 1500);
+      });
+    });
+  });
+  altsContainer.classList.remove('hidden');
+
+  // Auto-play the first detailed (long) alternative — lazy TTS fetch
+  const firstDetailed = sorted.find(a => a.label === 'Detailed') || sorted[0];
+  if (firstDetailed) {
+    fetch('/tts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: firstDetailed.text})
+    })
+      .then(r => { if (!r.ok) throw new Error('TTS failed'); return r.json(); })
+      .then(data => {
+        if (data.audio) playAudio('data:audio/mpeg;base64,' + data.audio);
+      })
+      .catch(err => console.error('Auto-play TTS failed:', err));
+  }
+}
+
+/* ---- Helpers ---- */
+function showStatus(html) { statusEl.innerHTML = html; statusEl.classList.remove('hidden'); }
+function hideStatus()   { statusEl.classList.add('hidden'); }
+function showError(msg) { showStatus('<span style="color:var(--error)">' + escapeHtml(msg) + '</span>'); }
+function hide(id)       { document.getElementById(id).classList.add('hidden'); }
+function escapeHtml(s)  { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function playAudio(url) {
+  speakingInd.classList.remove('hidden');
+  const audio = new Audio(url);
+  audio.onended = () => speakingInd.classList.add('hidden');
+  audio.onerror = () => speakingInd.classList.add('hidden');
+  audio.play().catch(() => speakingInd.classList.add('hidden'));
+}
+</script>
+</body>
+</html>
