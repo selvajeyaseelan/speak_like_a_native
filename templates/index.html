@@ -101,6 +101,45 @@ h1{font-size:2em;font-weight:800;margin-bottom:6px;
 @keyframes speakBar{0%{transform:scaleY(1)}100%{transform:scaleY(.3)}}
 .speak-label{font-size:.85em;color:var(--accent-light);font-weight:600}
 
+/* ---- Audio activity visualizer ---- */
+.audio-viz{
+  display:flex;align-items:center;justify-content:center;gap:3px;
+  height:28px;margin-bottom:8px;
+}
+.audio-viz .bar{
+  width:5px;height:6px;background:var(--muted);border-radius:3px;
+  transition:height .08s ease,background .08s ease;
+}
+.audio-viz.active .bar{background:var(--accent)}
+
+/* ---- History ---- */
+.history-section{margin-top:16px}
+.history-header{
+  display:flex;align-items:center;gap:6px;
+  padding:10px 14px;background:#1a1a3e;
+  border:1px solid #2a2a4e;border-radius:10px;
+  cursor:pointer;color:var(--muted);font-size:.82em;font-weight:500;
+  user-select:none;transition:background .15s;
+}
+.history-header:hover{background:#22224e}
+.history-count-badge{
+  background:var(--accent);color:#fff;font-size:.65em;
+  padding:1px 7px;border-radius:8px;margin-left:auto;
+}
+.history-list{margin-top:8px;max-height:320px;overflow-y:auto}
+.history-item{
+  padding:10px 12px;margin-bottom:6px;cursor:pointer;
+  background:#12122a;border:1px solid #2a2a4e;border-radius:8px;
+  transition:background .15s;
+}
+.history-item:hover{background:#1a1a3e}
+.history-item-transcript{
+  font-size:.82em;color:var(--text);margin-bottom:4px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.history-item-meta{font-size:.7em;color:var(--muted)}
+
 /* ---- Footer ---- */
 footer{margin-top:auto;padding:20px 0;text-align:center;color:var(--muted);font-size:.8em}
 
@@ -121,6 +160,14 @@ footer{margin-top:auto;padding:20px 0;text-align:center;color:var(--muted);font-
   <div class="center" style="margin-bottom:24px">
     <button id="recordBtn" class="btn btn-record" title="Tap to start/stop recording"></button>
     <p id="recordLabel" class="mt-1" style="color:var(--muted);font-size:.9em">Tap to record</p>
+
+    <!-- Audio activity visualizer -->
+    <div class="audio-viz" id="audioViz">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
   </div>
 
   <!-- Status -->
@@ -145,6 +192,16 @@ footer{margin-top:auto;padding:20px 0;text-align:center;color:var(--muted);font-
 
   <!-- Alternatives container -->
   <div id="altsContainer" class="hidden"></div>
+
+  <!-- History -->
+  <div class="history-section">
+    <div class="history-header" id="historyToggle">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+      History
+      <span class="history-count-badge" id="historyCount">0</span>
+    </div>
+    <div class="history-list hidden" id="historyList"></div>
+  </div>
 
   <footer>
     Powered by Gemini &amp; EURI &nbsp;&middot;&nbsp; Works best in Chrome
@@ -223,6 +280,10 @@ async function toggleRecording() {
       recordBtn.classList.add('recording');
       recordLabel.textContent = 'Recording… tap to stop';
       showStatus('🎙️ Listening — speak now');
+      // Start visualizer with a separate mic stream
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => startVisualization(stream))
+        .catch(() => startVisualization(null)); // fallback to fake animation
     } catch (err) {
       showError('Failed to start speech recognition: ' + err.message);
     }
@@ -241,14 +302,17 @@ async function toggleRecording() {
     recordBtn.classList.add('recording');
     recordLabel.textContent = 'Recording… tap to stop';
     showStatus('🎙️ Recording — speak now');
+    startVisualization(stream);
   } catch (err) {
     showError('Microphone access denied. Allow it and try again.');
+    stopVisualization();
   }
 }
 
 function stopRecording() {
   if (useWebSpeech && currentRecognition) {
     isRecording = false;
+    stopVisualization();
     const rec = currentRecognition;
     currentRecognition = null;
     rec.stop();
@@ -261,6 +325,7 @@ function stopRecording() {
   recordBtn.classList.remove('recording');
   recordLabel.textContent = 'Tap to record';
   mediaRecorder.stream.getTracks().forEach(t => t.stop());
+  stopVisualization();
 }
 
 /* ---- Send transcript (Web Speech path) ---- */
@@ -303,6 +368,9 @@ function renderResult(data) {
   // Show transcript
   transcriptText.textContent = data.transcript;
   transcriptCard.classList.remove('hidden');
+
+  // Save to history
+  saveHistory({ text: data.transcript, ts: Date.now() });
 
   // Sort: Detailed first, then Short
   const sorted = [...data.results].sort((a, b) => {

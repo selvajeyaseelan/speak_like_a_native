@@ -25,18 +25,24 @@ That's the only file you need to run.
 
 ## How It Works
 1. Tap **Record** → speak your situation/context into the microphone
+   - **Audio visualizer:** animated bars appear below the record button while the mic is active. They pulse when you speak and go flat when you pause — so you can see the app is listening.
 2. Tap **Stop & Process** → the app sends your audio to EURI's Whisper for transcription, then uses EURI's LLM to extract and rewrite your message as 4 natural alternatives (2 detailed, 2 short)
 3. The first detailed (long) alternative **auto-generates speech on demand** and plays aloud
 4. Tap **Listen** on any alternative to hear it (audio is generated only when you click), or **Copy** to grab the text
+5. **History panel:** tap "History" below the alternatives to expand a collapsible list of your last 20 requests. Tap any past entry to re-process it instantly.
 
-## Performance
-- **Latency improvement (v2):** TTS audio is now generated **on-demand** (lazy) rather than pre-generating all 4 alternatives. The initial response shows text alternatives ~4x faster. Audio is fetched from the server only when you tap "Listen".
-- Browser STT (Chrome) is the fastest path — it uses your browser's built-in speech recognition with no upload.
+## Features
+| Feature | What it does |
+|---|---|
+| Audio visualizer | Animated bars pulse while you speak (Web Audio API analyser; random fallback if unavailable) |
+| History | Last 20 transcripts saved in browser `localStorage`. Click any entry to re-send it to the server |
+| Lazy TTS | Audio is generated only when you tap "Listen", so text appears ~4x faster |
 
 ## Versioning
-- Current version: **lazy-tts** branch (fast text-first responses)
-- Previous version: **pre-lazy-tts** branch (all audio pre-generated)
-- To revert: `git checkout pre-lazy-tts`
+- Current branch: **main**
+- Baseline (before animation+history): commit `996d1c1`
+- To revert to baseline: `git reset --hard 996d1c1`
+- Remote mirror: `https://github.com/selvajeyaseelan/speak_like_a_native`
 
 ## Files
 | File | Purpose |
